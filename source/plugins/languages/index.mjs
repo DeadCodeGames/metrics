@@ -18,7 +18,7 @@ export default async function({login, data, imports, q, rest, account}, {enabled
     }
 
     //Load inputs
-    let {ignored, skipped, other, colors, aliases, details, threshold, limit, indepth, "indepth.custom": _indepth_custom, "analysis.timeout": _timeout_global, "analysis.timeout.repositories": _timeout_repositories, sections, categories, "recent.categories": _recent_categories, "recent.load": _recent_load, "recent.days": _recent_days} = imports.metadata
+    let {ignored, skipped, pathsIgnored, other, colors, aliases, details, threshold, limit, indepth, "indepth.custom": _indepth_custom, "analysis.timeout": _timeout_global, "analysis.timeout.repositories": _timeout_repositories, sections, categories, "recent.categories": _recent_categories, "recent.load": _recent_load, "recent.days": _recent_days} = imports.metadata
       .plugins.languages
       .inputs({
         data,

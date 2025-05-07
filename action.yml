@@ -281,6 +281,10 @@ inputs:
     description: Skipped repositories
     default: <default-value>
 
+  plugin_languages_paths_ignored:
+    description: Ignored folders in repositories (format repo/path or owner/repo/path)
+    default: <default-value>
+
   plugin_languages_limit:
     description: Display limit
     default: <default-value>

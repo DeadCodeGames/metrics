@@ -197,7 +197,14 @@ export class IndepthAnalyzer extends Analyzer {
     const result = {total: 0, files: 0, missed: {lines: 0, bytes: 0}, lines: {}, stats: {}}
     const edited = new Set()
     const seen = new Set()
+    const {repo} = this.parse(path)
+    
     for (const edition of commit.editions) {
+      // Skip this file if it's in an ignored path
+      if (this.shouldIgnorePath(repo, edition.path.replace(`${path}/`, ''))) {
+        continue
+      }
+      
       edited.add(edition.path)
 
       //Guess file language with linguist (only run it once per sha)
