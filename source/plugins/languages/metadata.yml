@@ -197,3 +197,20 @@ inputs:
     min: 0
     max: 365
     zero: disable
+
+  plugin_languages_paths_ignored:
+    description: |
+      Ignored folders in repositories
+      
+      Use the following formats:
+      - `folder_name` to ignore a folder in all repositories
+      - `repo:path/to/folder` to ignore a specific path in a specific repository
+      - `owner/repo:path/to/folder` to ignore a specific path in a repository with owner
+      - `repo/path` to ignore a path in a specific repository
+      - `owner/repo/path` to ignore a path in a specific repository with owner
+      
+      The colon format (`:`) is recommended for clarity with longer paths.
+    type: array
+    format: comma-separated
+    default: ""
+    example: node_modules, vendor, myrepo:external/libs, owner/repo:generated-code

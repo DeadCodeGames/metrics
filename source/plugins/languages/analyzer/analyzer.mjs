@@ -9,7 +9,7 @@ import core from "@actions/core"
 /**Analyzer */
 export class Analyzer {
   /**Constructor */
-  constructor(login, {account = "bypass", authoring = [], uid = Math.random(), shell, rest = null, context = {mode: "user"}, skipped = [], categories = ["programming", "markup"], timeout = {global: NaN, repositories: NaN}}) {
+  constructor(login, {account = "bypass", authoring = [], uid = Math.random(), shell, rest = null, context = {mode: "user"}, skipped = [], pathsIgnored = [], categories = ["programming", "markup"], timeout = {global: NaN, repositories: NaN}}) {
     //User informations
     this.login = login
     this.account = account
@@ -27,12 +27,13 @@ export class Analyzer {
       line: /^(?<op>[-+])\s*(?<content>[\s\S]+)$/,
     }
     this.parser = /^(?<login>[\s\S]+?)\/(?<name>[\s\S]+?)(?:@(?<branch>[\s\S]+?)(?::(?<ref>[\s\S]+))?)?$/
-    this.consumed = false
 
     //Options
     this.skipped = skipped
+    this.pathsIgnored = pathsIgnored
     this.categories = categories
     this.timeout = timeout
+    this.consumed = false
 
     //Results
     this.results = {partial: {global: false, repositories: false}, total: 0, lines: {}, stats: {}, colors: {}, commits: 0, files: 0, missed: {lines: 0, bytes: 0, commits: 0}, elapsed: 0}
@@ -113,11 +114,71 @@ export class Analyzer {
     }
   }
 
+  /**Check if path should be ignored */
+  shouldIgnorePath(repo, filePath) {
+    for (const ignoredPath of this.pathsIgnored) {
+      // Check for repo:path pattern (using colon as separator)
+      if (ignoredPath.includes(':')) {
+        const [repoSpec, pathToIgnore] = ignoredPath.split(':', 2);
+        
+        // Handle owner/repo:path format
+        if (repoSpec.includes('/') && repo === repoSpec) {
+          if (filePath.startsWith(pathToIgnore)) {
+            this.debug(`ignoring file ${filePath} in ${repo} as it matches ignored path ${pathToIgnore} (colon format)`)
+            return true;
+          }
+        }
+        // Handle repo:path format (current repo)
+        else if (repo.endsWith(`/${repoSpec}`)) {
+          if (filePath.startsWith(pathToIgnore)) {
+            this.debug(`ignoring file ${filePath} in ${repo} as it matches ignored path ${pathToIgnore} (colon format)`)
+            return true;
+          }
+        }
+        continue;
+      }
+      
+      // Check for owner/repo/path pattern (legacy slash format)
+      if (ignoredPath.includes('/')) {
+        const parts = ignoredPath.split('/');
+        
+        // Owner/repo/path format (at least 3 parts)
+        if (parts.length >= 3) {
+          const ownerRepo = `${parts[0]}/${parts[1]}`;
+          const pathToIgnore = parts.slice(2).join('/');
+          
+          if (repo === ownerRepo && filePath.startsWith(pathToIgnore)) {
+            this.debug(`ignoring file ${filePath} in ${repo} as it matches ignored path ${pathToIgnore}`)
+            return true;
+          }
+        } 
+        // Handle repo/path format (2 parts)
+        else if (parts.length === 2) {
+          const pathToIgnore = parts[1];
+          if (repo.endsWith(`/${parts[0]}`) && filePath.startsWith(pathToIgnore)) {
+            this.debug(`ignoring file ${filePath} in ${repo} as it matches ignored path ${pathToIgnore}`)
+            return true;
+          }
+        }
+      } 
+      // Simple path ignoring for all repos
+      else {
+        if (filePath.startsWith(ignoredPath)) {
+          this.debug(`ignoring file ${filePath} as it matches ignored path ${ignoredPath}`)
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   /**Analyze a repository */
   async analyze(path, {commits = []} = {}) {
     const cache = {files: {}, languages: {}}
     const start = Date.now()
     let elapsed = 0, processed = 0
+    const {repo} = this.parse(path)
+    
     if (this.timeout.repositories)
       this.debug(`timeout for repository analysis set to ${this.timeout.repositories}m`)
     for (const commit of commits) {
@@ -128,7 +189,7 @@ export class Analyzer {
         break
       }
       try {
-        const {total, files, missed, lines, stats} = await this.linguist(path, {commit, cache})
+        const {total, files, missed, lines, stats} = await this.linguist(path, {commit, cache, repo})
         this.results.commits++
         this.results.total += total
         this.results.files += files

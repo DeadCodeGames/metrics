@@ -108,7 +108,17 @@ export class RecentAnalyzer extends Analyzer {
     const cache = {files: {}, languages}
     const result = {total: 0, files: 0, missed: {lines: 0, bytes: 0}, lines: {}, stats: {}, languages: {}}
     const edited = new Set()
+    
     for (const edition of commit.editions) {
+      // Extract repo from edition path
+      const repoMatch = edition.path.match(/^(?<owner>[^\/]+)\/(?<repo>[^\/]+)\//)
+      const repo = repoMatch ? `${repoMatch.groups.owner}/${repoMatch.groups.repo}` : ""
+      
+      // Skip this file if it's in an ignored path
+      if (repo && this.shouldIgnorePath(repo, edition.path.replace(`${repo}/`, ''))) {
+        continue
+      }
+      
       edited.add(edition.path)
 
       //Guess file language with linguist
