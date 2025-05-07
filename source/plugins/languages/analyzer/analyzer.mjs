@@ -3,13 +3,13 @@ import fs from "fs/promises"
 import os from "os"
 import paths from "path"
 import git from "simple-git"
-import { filters } from "../../../app/metrics/utils.mjs"
+import {filters} from "../../../app/metrics/utils.mjs"
 import core from "@actions/core"
 
 /**Analyzer */
 export class Analyzer {
   /**Constructor */
-  constructor(login, {account = "bypass", authoring = [], uid = Math.random(), shell, rest = null, context = {mode: "user"}, skipped = [], pathsIgnored = [], categories = ["programming", "markup"], timeout = {global: NaN, repositories: NaN}}) {
+  constructor(login, {account = "bypass", authoring = [], uid = Math.random(), shell, rest = null, context = {mode:"user"}, skipped = [], pathsIgnored = [], categories = ["programming", "markup"], timeout = {global:NaN, repositories:NaN}}) {
     //User informations
     this.login = login
     this.account = account
@@ -22,9 +22,9 @@ export class Analyzer {
     this.rest = rest
     this.context = context
     this.markers = {
-      hash: /\b[0-9a-f]{40}\b/,
-      file: /^[+]{3}\sb[/](?<file>[\s\S]+)$/,
-      line: /^(?<op>[-+])\s*(?<content>[\s\S]+)$/,
+      hash:/\b[0-9a-f]{40}\b/,
+      file:/^[+]{3}\sb[/](?<file>[\s\S]+)$/,
+      line:/^(?<op>[-+])\s*(?<content>[\s\S]+)$/,
     }
     this.parser = /^(?<login>[\s\S]+?)\/(?<name>[\s\S]+?)(?:@(?<branch>[\s\S]+?)(?::(?<ref>[\s\S]+))?)?$/
 
@@ -36,7 +36,7 @@ export class Analyzer {
     this.consumed = false
 
     //Results
-    this.results = {partial: {global: false, repositories: false}, total: 0, lines: {}, stats: {}, colors: {}, commits: 0, files: 0, missed: {lines: 0, bytes: 0, commits: 0}, elapsed: 0}
+    this.results = {partial:{global:false, repositories:false}, total:0, lines:{}, stats:{}, colors:{}, commits:0, files:0, missed:{lines:0, bytes:0, commits:0}, elapsed:0}
     this.debug(`instantiated a new ${this.constructor.name}`)
   }
 
@@ -76,7 +76,7 @@ export class Analyzer {
       if (!this.parser.test(repository))
         throw new TypeError(`"${repository}" pattern is not supported`)
       const {login, name, ...groups} = repository.match(this.parser)?.groups ?? {}
-      repository = {owner: {login}, name}
+      repository = {owner:{login}, name}
       branch = groups.branch ?? null
       ref = groups.ref ?? null
     }
@@ -97,8 +97,8 @@ export class Analyzer {
     let url = /^https?:\/\//.test(repo) ? repo : `https://${token}@github.com/${repo}`
     try {
       this.debug(`cloning https://github.com/${repo} to ${path}`)
-      await fs.rm(path, {recursive: true, force: true})
-      await fs.mkdir(path, {recursive: true})
+      await fs.rm(path, {recursive:true, force:true})
+      await fs.mkdir(path, {recursive:true})
       await git(path).clone(url, ".", ["--single-branch"]).status()
       this.debug(`cloned https://github.com/${repo} to ${path}`)
       if (branch) {
@@ -117,68 +117,65 @@ export class Analyzer {
   /**Check if path should be ignored */
   shouldIgnorePath(repo, filePath) {
     for (const ignoredPath of this.pathsIgnored) {
-      // Check for repo:path pattern (using colon as separator)
-      if (ignoredPath.includes(':')) {
-        const [repoSpec, pathToIgnore] = ignoredPath.split(':', 2);
-        
-        // Handle owner/repo:path format
-        if (repoSpec.includes('/') && repo === repoSpec) {
+      //Check for repo:path pattern (using colon as separator)
+      if (ignoredPath.includes(":")) {
+        const [repoSpec, pathToIgnore] = ignoredPath.split(":", 2)
+
+        //Handle owner/repo:path format
+        if (repoSpec.includes("/") && repo === repoSpec) {
           if (filePath.startsWith(pathToIgnore)) {
             this.debug(`ignoring file ${filePath} in ${repo} as it matches ignored path ${pathToIgnore} (colon format)`)
-            return true;
+            return true
           }
         }
-        // Handle repo:path format (current repo)
+        //Handle repo:path format (current repo)
         else if (repo.endsWith(`/${repoSpec}`)) {
           if (filePath.startsWith(pathToIgnore)) {
             this.debug(`ignoring file ${filePath} in ${repo} as it matches ignored path ${pathToIgnore} (colon format)`)
-            return true;
+            return true
           }
         }
-        continue;
+        continue
       }
-      
-      // Check for owner/repo/path pattern (legacy slash format)
-      if (ignoredPath.includes('/')) {
-        const parts = ignoredPath.split('/');
-        
-        // Owner/repo/path format (at least 3 parts)
+
+      //Check for owner/repo/path pattern (legacy slash format)
+      if (ignoredPath.includes("/")) {
+        const parts = ignoredPath.split("/")
+
+        //Owner/repo/path format (at least 3 parts)
         if (parts.length >= 3) {
-          const ownerRepo = `${parts[0]}/${parts[1]}`;
-          const pathToIgnore = parts.slice(2).join('/');
-          
-          if (repo === ownerRepo && filePath.startsWith(pathToIgnore)) {
+          const ownerRepo = `${parts[0]}/${parts[1]}`
+          const pathToIgnore = parts.slice(2).join("/")
+if (repo === ownerRepo && filePath.startsWith(pathToIgnore)) {
             this.debug(`ignoring file ${filePath} in ${repo} as it matches ignored path ${pathToIgnore}`)
-            return true;
+            return true
           }
-        } 
-        // Handle repo/path format (2 parts)
+        }
+        //Handle repo/path format (2 parts)
         else if (parts.length === 2) {
-          const pathToIgnore = parts[1];
+          const [, pathToIgnore] = parts
           if (repo.endsWith(`/${parts[0]}`) && filePath.startsWith(pathToIgnore)) {
             this.debug(`ignoring file ${filePath} in ${repo} as it matches ignored path ${pathToIgnore}`)
-            return true;
+            return true
           }
         }
-      } 
-      // Simple path ignoring for all repos
-      else {
-        if (filePath.startsWith(ignoredPath)) {
-          this.debug(`ignoring file ${filePath} as it matches ignored path ${ignoredPath}`)
-          return true;
-        }
       }
+      //Simple path ignoring for all repos
+      else if (filePath.startsWith(ignoredPath)) {
+          this.debug(`ignoring file ${filePath} as it matches ignored path ${ignoredPath}`)
+          return true
+        }
     }
-    return false;
+    return false
   }
 
   /**Analyze a repository */
   async analyze(path, {commits = []} = {}) {
-    const cache = {files: {}, languages: {}}
+    const cache = {files:{}, languages:{}}
     const start = Date.now()
     let elapsed = 0, processed = 0
     const {repo} = this.parse(path)
-    
+
     if (this.timeout.repositories)
       this.debug(`timeout for repository analysis set to ${this.timeout.repositories}m`)
     for (const commit of commits) {
@@ -222,7 +219,7 @@ export class Analyzer {
   async clean(path) {
     try {
       this.debug(`cleaning ${path}`)
-      await fs.rm(path, {recursive: true, force: true})
+      await fs.rm(path, {recursive:true, force:true})
       this.debug(`cleaned ${path}`)
       return true
     }
