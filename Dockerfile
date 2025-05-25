@@ -45,7 +45,7 @@ RUN apt-get install -y python3
 RUN rm -rf /var/lib/apt/lists/*
 
 # Install node modules
-RUN npm ci
+RUN npm install --force
 
 # Build the project
 RUN npm run build
