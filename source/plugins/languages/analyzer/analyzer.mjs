@@ -4,7 +4,6 @@ import os from "os"
 import paths from "path"
 import git from "simple-git"
 import {filters} from "../../../app/metrics/utils.mjs"
-import core from "@actions/core"
 
 /**Analyzer */
 export class Analyzer {
@@ -88,19 +87,13 @@ export class Analyzer {
   /**Clone a repository */
   async clone(repository) {
     const {repo, branch, path} = this.parse(repository)
-    let token
-
-    if (process.env.GITHUB_ACTIONS) {
-      token = core.getInput("token")
-    }
-
-    let url = /^https?:\/\//.test(repo) ? repo : `https://${token}@github.com/${repo}`
+    let url = /^https?:\/\//.test(repo) ? repo : `https://github.com/${repo}`
     try {
       this.debug(`cloning https://github.com/${repo} to ${path}`)
       await fs.rm(path, {recursive:true, force:true})
       await fs.mkdir(path, {recursive:true})
       await git(path).clone(url, ".", ["--single-branch"]).status()
-      this.debug(`cloned https://github.com/${repo} to ${path}`)
+      this.debug(`cloned ${url} to ${path}`)
       if (branch) {
         this.debug(`switching to branch ${branch} for ${repo}`)
         await git(path).branch(branch)
@@ -108,7 +101,7 @@ export class Analyzer {
       return true
     }
     catch (error) {
-      this.debug(`failed to clone https://github.com/${repo} (${error})`)
+      this.debug(`failed to clone ${url} (${error})`)
       this.clean(path)
       return false
     }
@@ -116,6 +109,7 @@ export class Analyzer {
 
   /**Check if path should be ignored */
   shouldIgnorePath(repo, filePath) {
+    this.debug(repo, filePath)
     for (const ignoredPath of this.pathsIgnored) {
       //Check for repo:path pattern (using colon as separator)
       if (ignoredPath.includes(":")) {
@@ -146,7 +140,7 @@ export class Analyzer {
         if (parts.length >= 3) {
           const ownerRepo = `${parts[0]}/${parts[1]}`
           const pathToIgnore = parts.slice(2).join("/")
-if (repo === ownerRepo && filePath.startsWith(pathToIgnore)) {
+          if (repo === ownerRepo && filePath.startsWith(pathToIgnore)) {
             this.debug(`ignoring file ${filePath} in ${repo} as it matches ignored path ${pathToIgnore}`)
             return true
           }
@@ -162,11 +156,78 @@ if (repo === ownerRepo && filePath.startsWith(pathToIgnore)) {
       }
       //Simple path ignoring for all repos
       else if (filePath.startsWith(ignoredPath)) {
-          this.debug(`ignoring file ${filePath} as it matches ignored path ${ignoredPath}`)
-          return true
-        }
+        this.debug(`ignoring file ${filePath} as it matches ignored path ${ignoredPath}`)
+        return true
+      }
     }
     return false
+  }
+
+  /**Wrapper for linguist to handle path ignoring */
+  async filteredLinguist(path, options) {
+    const {repo} = options
+
+    //First call the original linguist method to get results
+    const results = await this.linguist(path, options)
+
+    //Filter out results for ignored paths
+    const filteredLines = {}
+    const filteredStats = {}
+    let filteredTotal = 0
+    let filteredFiles = 0
+    let ignoredFiles = 0
+
+    //Process each language entry
+    for (const [language,] of Object.entries(results.lines)) {
+      filteredLines[language] = 0
+    }
+
+    for (const [language,] of Object.entries(results.stats)) {
+      filteredStats[language] = 0
+    }
+
+    this.debug(results)
+
+    //Process file paths and filter out ignored ones
+    if (results.files_details) {
+      for (const fileDetail of results.files_details) {
+        const filePath = fileDetail.path
+
+        if (this.shouldIgnorePath(repo, filePath)) {
+          ignoredFiles++
+          //Skip this file's stats
+          continue
+        }
+
+        //Include this file's stats
+        filteredFiles++
+        filteredTotal += fileDetail.total || 0
+
+        //Add language-specific counts and stats
+        if (fileDetail.language) {
+          filteredLines[fileDetail.language] = (filteredLines[fileDetail.language] || 0) + (fileDetail.lines || 0)
+          filteredStats[fileDetail.language] = (filteredStats[fileDetail.language] || 0) + (fileDetail.bytes || 0)
+        }
+      }
+
+      //Return filtered results
+      if (ignoredFiles > 0) {
+        this.debug(`Filtered out ${ignoredFiles} files due to path ignore rules`)
+      }
+
+      return {
+        ...results,
+        lines:filteredLines,
+        stats:filteredStats,
+        total:filteredTotal,
+        files:filteredFiles,
+        files_details:results.files_details.filter(f => !this.shouldIgnorePath(repo, f.path))
+      }
+    }
+
+    //If linguist doesn't provide file details, we can't filter effectively
+    this.debug("Warning: Unable to filter paths effectively as linguist didn't return file details")
+    return results
   }
 
   /**Analyze a repository */
@@ -186,7 +247,7 @@ if (repo === ownerRepo && filePath.startsWith(pathToIgnore)) {
         break
       }
       try {
-        const {total, files, missed, lines, stats} = await this.linguist(path, {commit, cache, repo})
+        const {total, files, missed, lines, stats} = await this.filteredLinguist(path, {commit, cache, repo})
         this.results.commits++
         this.results.total += total
         this.results.files += files

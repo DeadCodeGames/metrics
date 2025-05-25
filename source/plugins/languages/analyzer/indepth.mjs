@@ -194,6 +194,7 @@ export class IndepthAnalyzer extends Analyzer {
 
   /**Run linguist against a commit and compute edited lines and bytes*/
   async linguist(path, {commit, cache}) {
+    this.debug(path, commit, cache)
     const result = {total:0, files:0, missed:{lines:0, bytes:0}, lines:{}, stats:{}}
     const edited = new Set()
     const seen = new Set()
