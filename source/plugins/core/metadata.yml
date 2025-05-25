@@ -493,7 +493,7 @@ inputs:
 
   use_prebuilt_image:
     description: |
-      Use pre-built docker image from [GitHub container registry](https://github.com/lowlighter/metrics/pkgs/container/metrics)
+      Use pre-built docker image from [GitHub container registry](https://github.com/deadcodegames/metrics/pkgs/container/metrics)
 
       It allows to save build time and make job significantly faster, and there is almost no reason to disable this settings.
       This option has no effects on forks (images will always be rebuilt from Dockerfile)
