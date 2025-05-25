@@ -222,12 +222,6 @@ inputs:
     description: Notice about new releases of metrics
     default: <default-value>
 
-  use_prebuilt_image:
-    description: >-
-      Use pre-built docker image from [GitHub container
-      registry](https://github.com/lowlighter/metrics/pkgs/container/metrics)
-    default: yes
-
   plugins_errors_fatal:
     description: Fatal plugin errors
     default: <default-value>
