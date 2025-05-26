@@ -1,6 +1,6 @@
 //Imports
 import fs from "fs/promises"
-import linguist from "linguist-js"
+import linguistLib from "linguist-js"
 import os from "os"
 import paths from "path"
 import {Analyzer} from "./analyzer.mjs"
@@ -212,7 +212,9 @@ export class IndepthAnalyzer extends Analyzer {
       if ((!(edition.path in cache.files)) && (!seen.has(commit.sha))) {
         this.debug(`language for file ${edition.path} is not in cache, running linguist at ${commit.sha}`)
         await this.shell.run(`git checkout ${commit.sha}`, {cwd:path, env:{LANG:"en_GB"}}, {log:false, debug:false, prefixed:false})
-        const {files:{results:files}, languages:{results:languages}} = await linguist(path)
+        const {files:{results:files}, languages:{results:languages}} = await linguistLib(path, {
+          ignoredFiles:this.pathsIgnored,
+        })
         Object.assign(cache.files, files)
         Object.assign(cache.languages, languages)
         seen.add(commit.sha)
