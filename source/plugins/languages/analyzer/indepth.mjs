@@ -202,7 +202,9 @@ export class IndepthAnalyzer extends Analyzer {
 
     for (const edition of commit.editions) {
       //Skip this file if it's in an ignored path
-      if (this.shouldIgnorePath(repo, edition.path.replace(`${path}/`, ""))) {
+      const relativePath = edition.path.replace(`${path}/`, "")
+      if (this.shouldIgnorePath(repo, relativePath)) {
+        this.debug(`skipping ignored file ${relativePath} in ${repo}`)
         continue
       }
 
