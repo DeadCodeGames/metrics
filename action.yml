@@ -1568,7 +1568,7 @@ runs:
         else
           # Fork (e.g. DeadCodeGames)
           if [[ ! $METRICS_USE_PREBUILT_IMAGE =~ ^([Ff]alse|[Oo]ff|[Nn]o|0)$ ]]; then
-            METRICS_IMAGE=ghcr.io/deadcodegames/metrics:$METRICS_TAG
+            METRICS_IMAGE=ghcr.io/deadcodegames/metrics
             echo "Trying to pull prebuilt image: $METRICS_IMAGE"
             if ! docker image pull $METRICS_IMAGE; then
               echo "Failed to pull image, will rebuild locally"
