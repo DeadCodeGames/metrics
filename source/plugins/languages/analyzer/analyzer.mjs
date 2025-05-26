@@ -116,7 +116,7 @@ export class Analyzer {
         const [repoSpec, pathToIgnore] = ignoredPath.split(":", 2)
 
         //Handle owner/repo:path format
-        if (repoSpec.includes("/") && repo === repoSpec) {
+        if (repoSpec.includes("/") && repo.toLowerCase() === repoSpec.toLowerCase()) {
           if (filePath.startsWith(pathToIgnore)) {
             this.debug(`ignoring file ${filePath} in ${repo} as it matches ignored path ${pathToIgnore} (colon format)`)
             return true
